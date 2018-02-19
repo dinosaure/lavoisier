@@ -35,8 +35,11 @@ let rec json : Condorcet.json Farfadet.t = fun e x ->
   | `A a        -> eval e [ char $ '['; !!arr; char $ ']' ] a
   | `O o        -> eval e [ char $ '{'; !!obj; char $ '}' ] o
 
-let with_lavoisier encoder payload () =
-  Lwt_main.run (Condorcet.eval_lwt (write stderr) encoder Condorcet.json payload)
+let with_lavoisier_a encoder payload () =
+  Lwt_main.run (Condorcet.A.eval_lwt (write stderr) encoder Condorcet.jsona payload)
+
+let with_lavoisier_b encoder payload () =
+  Lwt_main.run (Condorcet.B.eval_lwt (write stderr) encoder Condorcet.jsonb payload)
 
 let write oc iovecs =
   let open Faraday in
@@ -68,12 +71,12 @@ let () =
   let encoder = Lavoisier.create 0x1000 in
   let payload = P.of_input Pervasives.stdin in
 
-  let test_lavoisier = Bench.Test.create ~name:"lavoisier" (with_lavoisier encoder payload) in
-  let test_faraday = Bench.Test.create ~name:"faraday" (with_faraday payload) in
-
-  (* with_lavoisier encoder payload () *)
+  let test_lavoisier_a = Bench.Test.create ~name:"lavoisier (a)" (with_lavoisier_a encoder payload) in
+  let test_lavoisier_b = Bench.Test.create ~name:"lavoisier (b)" (with_lavoisier_b encoder payload) in
+  let test_faraday     = Bench.Test.create ~name:"faraday" (with_faraday payload) in
 
   Command.run
     (Bench.make_command
-       [ test_lavoisier
+       [ test_lavoisier_a
+       ; test_lavoisier_b
        ; test_faraday ])
