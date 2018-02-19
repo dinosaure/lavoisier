@@ -361,7 +361,7 @@ struct
   type ('a, 'r) t = (encoder -> 'r) -> encoder -> 'a -> 'r
 
   type ('ty, 'v) order =
-    | Const : 'a * ('a, 'v) t -> ('v, 'v) order
+    | Const : ('a, 'v) t * 'a -> ('v, 'v) order
     | Atom  : ('a, 'v) t -> ('a -> 'v, 'v) order
 
   type ('ty, 'v) fmt =
@@ -375,7 +375,7 @@ struct
       -> (encoder -> v)
       -> ty
     = fun encoder order k -> match order with
-      | Const (v, t) ->
+      | Const (t, v) ->
         t k encoder v
       | Atom t ->
         fun v -> t k encoder v
@@ -391,4 +391,15 @@ struct
       | order :: r ->
         let k encoder = keval encoder r k in
         keval_order encoder order k
+
+  let int8 : _ t = fun k e v -> Lavoisier.write_uint8 v k e
+  let char : _ t = fun k e v -> Lavoisier.write_char v k e
+
+  let atom f = Atom f
+  let (!!) = atom
+
+  let const a x = Const (a, x)
+  let ($) = const
+
+  let string e a b : unit state = keval e [!!int8; char $ '\000'; !!int8] (fun e -> Lavoisier.End ()) a b
 end
