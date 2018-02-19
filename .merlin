@@ -1,0 +1,5 @@
+S .
+
+B _build
+
+PKG fmt ocplib-endian ocplib-endian.bigstring alcotest faraday farfadet lwt core_bench cstruct nocrypto
