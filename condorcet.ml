@@ -138,7 +138,7 @@ let keval_lwt
 
 let eval_lwt w e t v = keval_lwt (fun e -> Lavoisier.End ()) w e (flush t) v
 
-module Encoding =
+module A =
 struct
   type endian =
     | Little
@@ -354,4 +354,41 @@ struct
           ; case obj_case
               (function `O l -> Some l | _ -> None)
               (fun l -> `O l) ]
+end
+
+module B =
+struct
+  type ('a, 'r) t = (encoder -> 'r) -> encoder -> 'a -> 'r
+
+  type ('ty, 'v) order =
+    | Const : 'a * ('a, 'v) t -> ('v, 'v) order
+    | Atom  : ('a, 'v) t -> ('a -> 'v, 'v) order
+
+  type ('ty, 'v) fmt =
+    | [] : ('v, 'v) fmt
+    | (::) : ('ty, 'v) order * ('v, 'r) fmt -> ('ty, 'r) fmt
+
+  let keval_order
+    : type ty v.
+      encoder
+      -> (ty, v) order
+      -> (encoder -> v)
+      -> ty
+    = fun encoder order k -> match order with
+      | Const (v, t) ->
+        t k encoder v
+      | Atom t ->
+        fun v -> t k encoder v
+
+  let rec keval
+    : type ty v.
+      encoder
+      -> (ty, v state) fmt
+      -> (encoder -> v state)
+      -> ty
+    = fun encoder l k -> match l with
+      | [] -> k encoder
+      | order :: r ->
+        let k encoder = keval encoder r k in
+        keval_order encoder order k
 end
