@@ -1,2 +1,2 @@
 true: thread
-<*/**>: package(fmt), package(ocplib-endian), package(ocplib-endian.bigstring), package(jsonm), package(lwt), package(lwt.unix), package(faraday), package(farfadet), package(core_bench), package(cstruct), package(nocrypto), package(landmarks), package(landmarks.ppx)
+<*/**>: package(fmt), package(ocplib-endian), package(ocplib-endian.bigstring), package(jsonm), package(lwt), package(lwt.unix), package(faraday), package(farfadet), package(core_bench), package(cstruct), package(nocrypto), package(landmarks), package(landmarks.ppx), package(angstrom)

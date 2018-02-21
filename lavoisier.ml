@@ -28,23 +28,19 @@ struct
   type t =
     { c : int
     ; w : int
-    ; l : value option
     ; q : Queue.t }
   and value = V.t
 
   let make capacity =
     { c = capacity
     ; w = 0
-    ; l = None
     ; q = Queue.create capacity }
 
-  let pp ppf { c; w; l; q; } =
+  let pp ppf { c; w; q; } =
     Fmt.pf ppf "{ @[<hov>c = %d;@ \
                          w = %d;@ \
-                         l = %a;@ \
                          q = %a;@] }"
       c w
-      (Fmt.option ~none:(Fmt.const Fmt.string "<none>") (Fmt.always "<some>")) l
       (Fmt.hvbox Queue.pp) q
 
   let available t =
@@ -55,19 +51,7 @@ struct
 
     if w > t.c
     then Error t
-    else begin
-      let updated = ref false in
-
-      if Option.map_default false (V.pequal v) t.l
-      then Queue.set_last (fun v' -> match V.merge v' v with
-          | Some _ as v' -> updated := true; v'
-          | none -> none) t.q;
-
-      if not !updated
-      then Queue.push v t.q;
-
-      Ok { t with w; l = Some v }
-    end
+    else begin Queue.push v t.q; Ok { t with w } end
 
   let shift_exn t = match Queue.shift t.q with
     | v -> v, { t with w = t.w - V.weight v }

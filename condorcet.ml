@@ -73,20 +73,39 @@ struct
     { run = fun k e v -> a.run k e (f v) }
 
   let map a f =
-    { run = fun k e v -> (f a).run k e v }
+    { run = fun k e v -> (f v).run k e v }
 
   let const a v =
     { run = fun k e () -> a.run k e v }
 
-  let ( >>= ) = map
-  let ( >>| ) = using
-  let ( <*> ) = compose
+  let ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t = map
+  let ( >>| ) : 'a t -> ('a -> 'b) -> 'b t = using
+  let ( <*> ) : 'a t -> 'b t -> ('a * 'b) t = compose
   let ( <!> ) = const
+
+  exception Fail
+
+  let fail =
+    { run = fun k e _ -> raise Fail }
+
+  let ( <|> ) pu pv =
+    { run = fun k e v ->
+          try pu.run k e v
+          with Fail | Bijection.Bijection -> pv.run k e v }
 
   let prefix p r =
     { run = fun k e v -> p.run (fun e -> r.run k e v) e () }
   let suffix s r =
     { run = fun k e v -> r.run (fun e -> s.run k e ()) e v }
+  let satisfy f =
+    using char (fun x -> match f x with true -> x | false -> raise Fail)
+  let while1 f =
+    let satisfy s =
+      let l = String.length s in
+      for i = 0 to l - 1
+      do if not (f (String.unsafe_get s i)) then raise Fail done;
+      s in
+    using string satisfy
 
   let ( <* ) r s = suffix s r
   let ( *> ) p r = prefix p r
@@ -110,9 +129,10 @@ struct
   let newline = int8 <!> 0x0a
   let flush a = { run = fun k e v -> a.run (fun e -> Lavoisier.flush k e) e v }
 
-  let bracks a = a >>= prefix l_brack >>= suffix r_brack
-  let parens a = a >>= prefix l_paren >>= suffix r_paren
-  let braces a = a >>= prefix l_brace >>= suffix r_brace
+  let bracks a = l_brack *> a <* r_brack
+  let parens a = l_paren *> a <* r_paren
+  let braces a = l_brace *> a <* r_brace
+  let between : unit t -> unit t -> 'a t -> 'a t = fun p s a -> p *> a <* s
 
   let dquote = char <!> '"'
   let comma = char <!> ','
@@ -146,6 +166,24 @@ struct
       t.run k e v |> go
 
   let eval_lwt w e t v = keval_lwt (fun e -> Lavoisier.End ()) w e (flush t) v
+
+  let to_string : type a. a t -> a -> string
+    = fun t v ->
+      let buf = Buffer.create 16 in
+      let writer l =
+        List.iter
+          (function
+            | { Lavoisier.IOVec.buffer = Lavoisier.Buffer.String s; off; len; } ->
+              Buffer.add_substring buf s off len
+            | { Lavoisier.IOVec.buffer = Lavoisier.Buffer.Bytes s; off; len; } ->
+              Buffer.add_subbytes buf s off len
+            | { Lavoisier.IOVec.buffer = Lavoisier.Buffer.Bigstring s; off; len; } ->
+              for i = 0 to len - 1
+              do Buffer.add_char buf (Bigarray.Array1.get s (off + i)) done)
+          l;
+        Lavoisier.IOVec.lengthv l in
+      eval writer (Lavoisier.create 0x100) t v;
+      Buffer.contents buf
 end
 
 module B =
@@ -355,7 +393,7 @@ let rec jsona : json A.t =
 
   let json =
     fix @@ fun json ->
-    let binding = (string <*> colon <*> json) >>| (fun (k, v) -> ((k, ()), v)) in
+    let binding : (string * json) t = using (string <*> colon <*> json) (fun (k, v) -> ((k, ()), v)) in
 
     { run = fun k e -> function
           | `Null -> string.run k e "null"
