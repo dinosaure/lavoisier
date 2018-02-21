@@ -19,6 +19,9 @@ sig
   val satisfy : (char -> bool) -> char t
   val between : unit t -> unit t -> 'a t -> 'a t
   val while1  : (char -> bool) -> string t
+  val take    : int -> string t
+  val list    : ?sep:unit t -> 'a t -> 'a list t
+  val string  : string -> string t
 
   module Option:
   sig

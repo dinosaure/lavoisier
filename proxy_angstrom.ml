@@ -50,6 +50,11 @@ struct
   let satisfy = Angstrom.satisfy
   let between p s a = p *> a <* s
   let while1 = Angstrom.take_while1
+  let take = Angstrom.take
+  let list ?sep p = match sep with
+    | Some sep -> Angstrom.sep_by sep p
+    | None -> Angstrom.many p
+  let string = Angstrom.string
 
   module Option =
   struct
